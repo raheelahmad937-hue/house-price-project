@@ -1,0 +1,46 @@
+# .github/workflows/ci.yml
+# This tells GitHub: "every time code is pushed, do these steps automatically"
+
+name: CI Pipeline
+
+# Step 1: WHEN should this robot wake up?
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    # Step 2: What kind of computer should the robot use?
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 3: Get a copy of our code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 4: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Step 5: Install our tools
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+          pip install pytest
+
+      # Step 6: Train the model (so we have a fresh .pkl file to test)
+      - name: Train model
+        run: python train.py
+
+      # Step 7: Run our tests
+      - name: Run tests
+        run: pytest tests/
+
+      # Step 8: Try building the Docker image (make sure it still works)
+      - name: Build Docker image
+        run: docker build -t house-price-app .
