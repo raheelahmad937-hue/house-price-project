@@ -1,3 +1,15 @@
+from flask import Flask, request, jsonify, render_template_string
+import joblib
+import pandas as pd
+
+model = joblib.load("house_price_model.pkl")
+
+data = pd.read_csv("House_Price_Prediction_Dataset.csv")
+data = pd.get_dummies(data, columns=["Location", "Condition", "Garage"])
+model_columns = data.drop(columns=["Id", "Price"]).columns
+
+app = Flask(__name__)
+
 HTML_PAGE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -30,8 +42,6 @@ HTML_PAGE = """
     padding: 40px 20px;
     overflow-x: hidden;
   }
-
-  /* Glowing "porch light" behind the card */
   .glow {
     position: fixed;
     top: -10%;
@@ -48,7 +58,6 @@ HTML_PAGE = """
     0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
     50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
   }
-
   .card {
     position: relative;
     width: 100%;
@@ -60,7 +69,6 @@ HTML_PAGE = """
     backdrop-filter: blur(18px);
     box-shadow: 0 0 60px rgba(255,180,84,0.08), 0 20px 60px rgba(0,0,0,0.5);
   }
-
   .eyebrow {
     font-size: 12px;
     letter-spacing: 3px;
@@ -69,7 +77,6 @@ HTML_PAGE = """
     margin-bottom: 10px;
     font-weight: 600;
   }
-
   h1 {
     font-family: 'Fraunces', serif;
     font-size: 32px;
@@ -81,13 +88,11 @@ HTML_PAGE = """
     background-clip: text;
     color: transparent;
   }
-
   .sub {
     color: var(--text-dim);
     font-size: 14px;
     margin-bottom: 28px;
   }
-
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -95,7 +100,6 @@ HTML_PAGE = """
   }
   .field { margin-bottom: 14px; }
   .field.full { grid-column: 1 / -1; }
-
   label {
     display: block;
     font-size: 11px;
@@ -104,7 +108,6 @@ HTML_PAGE = """
     color: var(--text-dim);
     margin-bottom: 6px;
   }
-
   input, select {
     width: 100%;
     padding: 11px 12px;
@@ -122,7 +125,6 @@ HTML_PAGE = """
     box-shadow: 0 0 0 3px rgba(255,180,84,0.15);
   }
   select option { background: #1a1a24; color: var(--text); }
-
   button {
     width: 100%;
     margin-top: 10px;
@@ -142,7 +144,6 @@ HTML_PAGE = """
     box-shadow: 0 6px 28px rgba(255,180,84,0.5);
   }
   button:active { transform: translateY(0); }
-
   #result {
     margin-top: 22px;
     padding: 18px;
@@ -272,3 +273,19 @@ document.getElementById("predictForm").addEventListener("submit", async function
 </body>
 </html>
 """
+
+@app.route("/")
+def home():
+    return render_template_string(HTML_PAGE)
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    input_data = request.get_json()
+    input_df = pd.DataFrame([input_data])
+    input_df = pd.get_dummies(input_df)
+    input_df = input_df.reindex(columns=model_columns, fill_value=0)
+    prediction = model.predict(input_df)[0]
+    return jsonify({"predicted_price": round(float(prediction), 2)})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
